@@ -1,0 +1,22 @@
+{
+  "name": "teurat/scandiweb-backend",
+  "description": "A simple GraphQL PHP backend for the Scandiweb full-stack test task.",
+  "require": {
+    "webonyx/graphql-php": "^15",
+    "vlucas/phpdotenv": "^5"
+  },
+  "autoload": {
+    "psr-4": {
+      "Teurat\\Scandiweb\\": "src/"
+    }
+  },
+  "authors": [
+    {
+      "name": "Teurat Murtezai",
+      "email": "teuratmurtezai@gmail.com"
+    }
+  ],
+  "require-dev": {
+    "phpstan/phpstan": "^2.1"
+  }
+}
