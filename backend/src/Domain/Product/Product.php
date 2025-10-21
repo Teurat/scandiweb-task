@@ -1,5 +1,7 @@
 <?php
-namespace App\Domain\Product; 
+declare(strict_types=1);
+namespace Teurat\Scandiweb\Domain\Product;
+ 
 final class Product
 {
     public function __construct(

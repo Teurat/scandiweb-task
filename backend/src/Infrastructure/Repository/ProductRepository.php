@@ -57,12 +57,10 @@ final class ProductRepository extends AbstractRepository
         $priceRows = $stmtPrices->fetchAll(\PDO::FETCH_ASSOC) ?: [];
         $prices = array_map(
             fn(array $p) => [
-                'amount' => (float)$p['amount'],
-                'currency' => [
+                    'amount' => (float)$p['amount'],               
                     'label' => $p['code'],
                     'symbol' => $p['symbol'],
                 ],
-            ],
             $priceRows
         );
 
@@ -83,15 +81,15 @@ final class ProductRepository extends AbstractRepository
             $sid = $ar['attr_set_id'];
             if (!isset($sets[$sid])) {
                 $sets[$sid] = [
-                    'name' => $ar['name'],
+                    'label' => $ar['name'],
                     'type' => $ar['type'],
                     'items' => [],
                 ];
             }
-            $sets[$sid]['items'][] = [
+            $sets[$sid]['values'][] = [
                 'id' => $ar['ref_id'],
-                'displayValue' => $ar['display_val'],
-                'value' => $ar['value'],
+                'display' => $ar['display_val'],
+                'values' => $ar['value'],
             ];
         }
         $attributes = array_values($sets);
