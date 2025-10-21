@@ -1,18 +1,16 @@
 <?php
+declare(strict_types=1);
+
 namespace Teurat\Scandiweb\Infrastructure\Repository;
 
-use PDO;
 use Teurat\Scandiweb\Domain\Category\Category;
 
 final class CategoryRepository extends AbstractRepository
 {
-    /** @return Category[] */
-    public function getAll(): array
-    {
-        $rows = $this->pdo
-            ->query('SELECT name FROM category')
-            ->fetchAll(PDO::FETCH_COLUMN);
+    protected const TABLE = 'category';
 
-        return array_map(fn(string $name) => new Category($name), $rows);
+    protected function mapRow(array $row): Category
+    {
+        return new Category($row['name']);
     }
 }
