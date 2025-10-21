@@ -1,14 +1,15 @@
 <?php
+declare(strict_types=1);
+
 namespace Teurat\Scandiweb\Infrastructure\Repository;
 
-use Teurat\Scandiweb\Domain\Product\{
-    AbstractProduct,
-    GenericProduct
-};
+use Teurat\Scandiweb\Domain\Product\Product;
 
 final class ProductRepository extends AbstractRepository
 {
-    /** @return AbstractProduct[] */
+    protected const TABLE = 'product';
+
+    /** @return Product[] */
     public function getAll(?string $category = null): array
     {
         $sql = 'SELECT * FROM product';
@@ -21,27 +22,30 @@ final class ProductRepository extends AbstractRepository
 
         $stmt = $this->pdo->prepare($sql);
         $stmt->execute($params);
-        $rows = $stmt->fetchAll();
+        $rows = $stmt->fetchAll(\PDO::FETCH_ASSOC) ?: [];
 
-        return array_map(fn($row) => $this->hydrate($row), $rows);
+        return array_map(fn(array $row) => $this->hydrate($row), $rows);
     }
 
-    public function getById(string $id): ?AbstractProduct
+    public function getById(string $id): ?Product
     {
         $stmt = $this->pdo->prepare('SELECT * FROM product WHERE product_id = :id');
         $stmt->execute([':id' => $id]);
-        $row = $stmt->fetch();
+        $row = $stmt->fetch(\PDO::FETCH_ASSOC);
 
         return $row ? $this->hydrate($row) : null;
     }
 
-    private function hydrate(array $row): AbstractProduct
+    protected function mapRow(array $row): Product
     {
-        $product = new GenericProduct($row);
+        return $this->hydrate($row);
+    }
 
+    private function hydrate(array $row): Product
+    {
         $stmtGallery = $this->pdo->prepare('SELECT image_url FROM gallery WHERE product_id = ?');
         $stmtGallery->execute([$row['product_id']]);
-        $product->gallery = array_column($stmtGallery->fetchAll(), 'image_url');
+        $gallery = array_column($stmtGallery->fetchAll(\PDO::FETCH_ASSOC) ?: [], 'image_url');
 
         $stmtPrices = $this->pdo->prepare(
             'SELECT amount, c.code, c.symbol
@@ -50,7 +54,17 @@ final class ProductRepository extends AbstractRepository
               WHERE product_id = ?'
         );
         $stmtPrices->execute([$row['product_id']]);
-        $product->prices = $stmtPrices->fetchAll();
+        $priceRows = $stmtPrices->fetchAll(\PDO::FETCH_ASSOC) ?: [];
+        $prices = array_map(
+            fn(array $p) => [
+                'amount' => (float)$p['amount'],
+                'currency' => [
+                    'label' => $p['code'],
+                    'symbol' => $p['symbol'],
+                ],
+            ],
+            $priceRows
+        );
 
         $stmtAttributes = $this->pdo->prepare(
             'SELECT s.attr_set_id, s.name, s.type,
@@ -62,21 +76,36 @@ final class ProductRepository extends AbstractRepository
            ORDER BY s.attr_set_id, i.item_id'
         );
         $stmtAttributes->execute([$row['product_id']]);
+        $attrRows = $stmtAttributes->fetchAll(\PDO::FETCH_ASSOC) ?: [];
 
         $sets = [];
-        foreach ($stmtAttributes as $attributeRow) {
-            $setId = $attributeRow['attr_set_id'];
-            $sets[$setId]['label']    = $attributeRow['name'];
-            $sets[$setId]['type']     = $attributeRow['type'];
-            $sets[$setId]['values'][] = [
-                'id'      => $attributeRow['ref_id'],
-                'display' => $attributeRow['display_val'],
-                'value'   => $attributeRow['value'],
+        foreach ($attrRows as $ar) {
+            $sid = $ar['attr_set_id'];
+            if (!isset($sets[$sid])) {
+                $sets[$sid] = [
+                    'name' => $ar['name'],
+                    'type' => $ar['type'],
+                    'items' => [],
+                ];
+            }
+            $sets[$sid]['items'][] = [
+                'id' => $ar['ref_id'],
+                'displayValue' => $ar['display_val'],
+                'value' => $ar['value'],
             ];
         }
-        $product->attributes  = array_values($sets);
-        $product->description = $row['description'] ?? '';
+        $attributes = array_values($sets);
 
-        return $product;
-    }
+        return new Product(
+            id: $row['product_id'],
+            name: $row['name'] ?? '',
+            inStock: (bool)($row['in_stock'] ?? $row['inStock'] ?? 0),
+            brand: $row['brand'] ?? '',
+            category: $row['category'] ?? '',
+            gallery: $gallery,
+            prices: $prices,
+            attributes: $attributes,
+            description: $row['description'] ?? ''
+        );
+        }
 }
