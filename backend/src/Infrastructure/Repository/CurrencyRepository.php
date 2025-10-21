@@ -1,15 +1,17 @@
 <?php
-namespace Teurat\Scandiweb\Infrastructure\Repository;
+declare(strict_types=1);
 
-use PDO;
+namespace Teurat\Scandiweb\Infrastructure\Repository;
 
 final class CurrencyRepository extends AbstractRepository
 {
-    /** @return array<array{code:string,symbol:string}> */
-    public function getAll(): array
+    protected const TABLE = 'currency';
+
+    protected function mapRow(array $row): array
     {
-        return $this->pdo
-            ->query('SELECT code, symbol FROM currency')
-            ->fetchAll(PDO::FETCH_ASSOC);
+        return [
+            'code' => $row['code'],
+            'symbol' => $row['symbol'],
+        ];
     }
 }
