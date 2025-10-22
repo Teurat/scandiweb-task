@@ -12,29 +12,39 @@ final class ProductType extends ObjectType
             'name'   => 'Product',
             'fields' => function (): array {
                 return [
-                    'id'   => [
+                    'id' => [
                         'type'    => Type::nonNull(Type::string()),
-                        'resolve' => fn($product) => $product->sku
+                        'resolve' => fn($p) => (string)($p->id ?? ($p['id'] ?? ($p->sku ?? ''))),
                     ],
 
-                    'sku'       => Type::nonNull(Type::string()),
+                    'sku' => [
+                        'type'    => Type::string(),
+                        'resolve' => fn($p) => isset($p->sku)
+                            ? (string)$p->sku
+                            : (string)($p->id ?? ($p['id'] ?? null)),
+                    ],
+
                     'name'      => Type::nonNull(Type::string()),
                     'inStock'   => Type::nonNull(Type::boolean()),
-                    'gallery'   => Type::nonNull(Type::listOf(Type::string())),
+                    'brand'     => Type::nonNull(Type::string()),
+                    'category'  => Type::nonNull(Type::string()),
+                    'gallery'   => Type::nonNull(Type::listOf(Type::nonNull(Type::string()))),
 
-                    'prices'    => Type::nonNull(
-                        Type::listOf(AppTypes::price())
-                    ),
-                    'attributes' => Type::nonNull(
-                        Type::listOf(AppTypes::attribute())
-                    ),
-
-                    'description' => Type::string(),
+                    'prices'     => Type::nonNull(Type::listOf(AppTypes::price())),
+                    'attributes' => Type::nonNull(Type::listOf(AppTypes::attribute())),
+                    'description'=> Type::string(),
                 ];
             },
 
             'resolveField' => function ($product, $args, $context, $info) {
-                return $product->{$info->fieldName} ?? null;
+                $field = $info->fieldName;
+                if (is_object($product) && isset($product->{$field})) {
+                    return $product->{$field};
+                }
+                if (is_array($product) && array_key_exists($field, $product)) {
+                    return $product[$field];
+                }
+                return null;
             },
         ]);
     }
